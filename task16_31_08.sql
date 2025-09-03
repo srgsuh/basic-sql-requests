@@ -6,7 +6,7 @@ select	tr.track_id "Track ID",
 from track tr
 left join album al on tr.album_id = al.album_id
 left join artist art on art.artist_id = al.artist_id
-left join genre g on tr.genre_id = g.genre_id 
+left join genre g on tr.genre_id = g.genre_id
 where not exists (select 1 from invoice_line il where il.track_id = tr.track_id)
 order by art.name, tr.name;
 
@@ -37,9 +37,8 @@ limit 5;
 select i.invoice_id
 from invoice i
 where i.total != (
-	select sum(il.quantity * tr.unit_price)
+	select sum(il.quantity * il.unit_price)
 	from invoice_line il
-	join track tr on il.track_id = tr.track_id
 	where il.invoice_id = i.invoice_id
 );
 
