@@ -2,7 +2,6 @@
 select	tr.track_id as "Track ID", 
 		tr.name as "Track name",
 		al.title as "Album title",
-		tr.milliseconds,
 		to_char(make_interval(secs => tr.milliseconds/1000.0), 'HH24:MI:SS.MS') as "Time"
 from track tr
 left join album al on tr.album_id = al.album_id
@@ -53,7 +52,6 @@ where ibc.num_of_invoices = mi.max_invoices
 order by country;
 
 -- 5. All employees whose supported customers provide 80% of the total revenue according to Pareto rule
-explain
 with empl_revenue as (
 	select	concat(e.first_name, ' ', e.last_name) employee_name,
 			sum(i.total) revenue
@@ -61,16 +59,16 @@ with empl_revenue as (
 	join customer c on c.support_rep_id = e.employee_id
 	join invoice i on i.customer_id = c.customer_id
 	group by employee_name
-), empl_revenue_running as(
+), empl_revenue_total as(
 	select	er.*,
-			sum( revenue ) over (order by revenue desc, employee_name) running_total,
-			sum( revenue ) over () total
+			sum(revenue) over (order by revenue desc, employee_name) running_total,
+			sum(revenue) over () total
 	from empl_revenue er
 ), empl_revenue_lag as (
-	select	err.*, lag(running_total, 1) over (order by revenue desc, employee_name) total_lag
-	from empl_revenue_running err
+	select	ert.*, lag(running_total, 1) over (order by revenue desc, employee_name) total_lag
+	from empl_revenue_total ert
 )
 select employee_name, revenue
 from empl_revenue_lag erl
-where erl.total_lag is null or erl.total_lag < 0.8 * erl.total
+where (erl.total_lag is null or erl.total_lag < 0.8 * erl.total)
 order by revenue desc, employee_name;
