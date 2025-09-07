@@ -1,30 +1,32 @@
 -- 1. Top 5 longest tracks
-select	tr.track_id as "Track ID", 
+-- Hours added to the format string as there are results with more than hour duration
+select	tr.track_id as "Track ID",
 		tr.name as "Track name",
 		al.title as "Album title",
-		to_char(make_interval(secs => tr.milliseconds/1000.0), 'HH24:MI:SS.MS') as "Time"
+		to_char(make_interval(secs => 0.001 * tr.milliseconds), 'HH24:MI:SS.MS') as "Time"
 from track tr
 left join album al on tr.album_id = al.album_id
 order by tr.milliseconds desc
 limit 5;
 
 -- 2. All genres providing revenue of top 3 values
-with ranked_genres as(
-    select	g.name as genre_name,
-              sum(il.quantity * il.unit_price) as revenue,
-              dense_rank() over(order by sum(il.quantity * il.unit_price) desc) rnk
+with ranked_genres as (
+    select  g.name as genre_name,
+            sum(il.quantity * il.unit_price) as revenue,
+            dense_rank() over(order by sum(il.quantity * il.unit_price) desc) as rnk
     from genre g
-             join track tr on tr.genre_id = g.genre_id
-             join invoice_line il on il.track_id = tr.track_id
+    join track tr on tr.genre_id = g.genre_id
+    join invoice_line il on il.track_id = tr.track_id
     group by g.name
 )
 select * from ranked_genres
-where rnk <= 3;
+where rnk <= 3
+order by revenue desc;
 
 -- 3. All customers whose revenue is within top 3 positions
-select	customer_id as "Customer Id",
-		full_name as "Customer full name",
-		revenue as "Revenue value"
+select  customer_id as "Customer Id",
+        full_name as "Customer full name",
+        revenue as "Revenue value"
 from (
 	select	c.customer_id,
 			concat(c.first_name, ' ', c.last_name) full_name,
@@ -33,7 +35,7 @@ from (
 	from customer c
 	join invoice i on i.customer_id = c.customer_id
 	group by c.customer_id, full_name
-) cust_revenue
+) customer_revenue
 where rnk <= 3;
 
 
@@ -65,7 +67,7 @@ with empl_revenue as (
 			sum(revenue) over () total
 	from empl_revenue er
 ), empl_revenue_lag as (
-	select	ert.*, lag(running_total, 1) over (order by revenue desc, employee_name) total_lag
+	select	ert.*, lag(running_total) over (order by revenue desc, employee_name) total_lag
 	from empl_revenue_total ert
 )
 select employee_name, revenue
